@@ -1,0 +1,14 @@
+title: "My Blog"
+author: "Your Name"
+description: "Trading insights and market analysis"
+baseurl: ""
+url: "https://socks5th.github.io"
+
+theme: null
+plugins:
+  - jekyll-feed
+
+permalink: /posts/:slug
+
+markdown: kramdown
+highlighter: rouge

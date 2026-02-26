@@ -1,0 +1,144 @@
+---
+layout: default
+---
+
+<!-- Top bar -->
+<div class="top-bar" id="search-float">
+  <div class="top-bar-inner">
+    <!-- Dark mode toggle (left) -->
+    <button class="dark-toggle" id="dark-toggle" aria-label="Toggle dark mode">
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+      </svg>
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </svg>
+    </button>
+    <div class="top-bar-right">
+      <button class="search-toggle" id="search-toggle" aria-label="Open search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+      </button>
+      <div class="search-expand" id="search-expand">
+        <svg class="search-expand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input type="text" id="search-input" placeholder="Search" autocomplete="off" spellcheck="false">
+        <button class="search-close" id="search-close" aria-label="Close search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- No results state -->
+<div class="no-results" id="no-results">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+  </svg>
+  <p>No posts found for "<span id="no-results-query"></span>"</p>
+</div>
+
+<div class="grid" id="card-grid">
+  {% for post in site.posts %}
+  <a class="card {% cycle 'tall', '', '', 'wide', 'tall', '', 'wide', '' %}"
+     href="{{ post.url | relative_url }}"
+     data-search="{{ post.title | downcase }} {{ post.content | strip_html | downcase | truncate: 3000 }} {{ post.categories | join: ' ' | downcase }}">
+    {% if post.cover_image %}
+    <img class="card-img" src="{{ post.cover_image }}" alt="{{ post.title }}">
+    {% endif %}
+    <div class="card-body">
+      <div class="card-meta">
+        <div class="avatar">{{ site.author | slice: 0 | upcase }}</div>
+        <div class="meta-text">
+          <strong>{{ site.author }}</strong> ·
+          {{ post.date | date: "%b %-d, %Y" }} ·
+          {% assign wc = post.content | default: "" | number_of_words %}{{ wc | divided_by: 200 | plus: 1 }} min read
+        </div>
+      </div>
+      {% if post.categories.first %}
+      <span class="card-tag">{{ post.categories.first }}</span>
+      {% endif %}
+      <h2 class="card-title">{{ post.title }}</h2>
+      {% if post.excerpt %}
+      <p class="card-excerpt">{{ post.excerpt | strip_html | truncate: 120 }}</p>
+      {% endif %}
+
+    </div>
+  </a>
+  {% endfor %}
+</div>
+
+<script>
+(function () {
+  const toggle   = document.getElementById('search-toggle');
+  const floatEl  = document.getElementById('search-float');
+  const input    = document.getElementById('search-input');
+  const closeBtn = document.getElementById('search-close');
+  const grid     = document.getElementById('card-grid');
+  const noRes    = document.getElementById('no-results');
+  const noQuery  = document.getElementById('no-results-query');
+  const cards    = Array.from(grid.querySelectorAll('.card'));
+
+  let debounceTimer;
+  let isOpen = false;
+
+  function openSearch() {
+    isOpen = true;
+    floatEl.classList.add('open');
+    setTimeout(() => input.focus(), 50);
+  }
+
+  function closeSearch() {
+    isOpen = false;
+    floatEl.classList.remove('open');
+    input.value = '';
+    runSearch('');
+  }
+
+  function runSearch(raw) {
+    const query = raw.trim().toLowerCase();
+
+    if (!query) {
+      cards.forEach(c => c.classList.remove('hidden'));
+      grid.style.display  = '';
+      noRes.style.display = 'none';
+      return;
+    }
+
+    const tokens = query.split(/\s+/).filter(Boolean);
+    let matched  = 0;
+
+    cards.forEach(card => {
+      const hit = tokens.every(t => card.dataset.search.includes(t));
+      card.classList.toggle('hidden', !hit);
+      if (hit) matched++;
+    });
+
+    grid.style.display  = matched ? '' : 'none';
+    noRes.style.display = matched ? 'none' : 'flex';
+    noQuery.textContent = raw.trim();
+  }
+
+  toggle.addEventListener('click', openSearch);
+  closeBtn.addEventListener('click', closeSearch);
+
+  input.addEventListener('input', () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => runSearch(input.value), 350);
+  });
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeSearch();
+    if (e.key === 'Enter') { clearTimeout(debounceTimer); runSearch(input.value); }
+  });
+
+  document.addEventListener('click', e => {
+    if (isOpen && !floatEl.contains(e.target)) closeSearch();
+  });
+})();
+</script>
